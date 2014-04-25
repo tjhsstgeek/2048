@@ -1,51 +1,52 @@
-function ai_grid(arr) {
+function ai_grid(w, h, arr) {
 	this.arr = new Array();
 	for (var a = 0;a < 16;a++) {
 		this.arr[a] = arr[a];
 	}
 
-	this.dup = ai_dup;
-	this.get = ai_get;
-	this.set = ai_set;
-	this.move = ai_move;
-	this.cost = ai_cost;
-	this.score = ai_score;
-	this.max = ai_max;
-	this.bruteforce = ai_bruteforce;
-	this.badloc = ai_badloc;
+	this.w = w;
+	this.h = h;
 }
 
-function ai_dup() {
-	return new ai_grid(this.arr);
+ai_grid.prototype.dup = function () {
+	return new ai_grid(this.w, this.h, this.arr);
 }
 
-function ai_get(loc) {
+ai_grid.prototype.get = function (loc) {
 	return this.arr[loc];
 }
 
-function ai_set(loc, val) {
+ai_grid.prototype.set = function (loc, val) {
 	this.arr[loc] = val;
 }
 
-function ai_move(dir) {
+ai_grid.prototype.reset = function (other) {
+	for (var a = 0; a < this.arr.length; a++) {
+		this.arr[a] = other.arr[a];
+	}
+}
+
+ai_grid.prototype.move = function (dir) {
 	// 0: up, 1: right, 2:down, 3: left
-	/* step1 is for combining, step2 for iterating the rows/columns */
+	/* step1 is for combining elements in a row/column
+	 * step2 is for iterating through the rows/columns
+	 * start is the first node to visit */
 	var step1, step2, start;
 	if (dir == 0) {
-		step1 = 4;
+		step1 = this.w;
 		step2 = 1;
 		start = 0;
 	} else if (dir == 2) {
-		step1 = -4;
+		step1 = -this.w;
 		step2 = -1;
-		start = 15;
+		start = this.arr.length - 1;
 	} else if (dir == 1) {
 		step1 = -1;
-		step2 = -4;
-		start = 15;
+		step2 = -this.w;
+		start = this.arr.length - 1;
 	} else if (dir == 3) {
 		step1 = 1;
-		step2 = 4;
+		step2 = this.w;
 		start = 0;
 	} else
 		return false;
@@ -70,7 +71,7 @@ function ai_move(dir) {
 				var val_merge = this.get(loc_merge);
 
 				if (val == val_merge) {
-					this.set(loc_merge, val * 2);
+					this.set(loc_merge, val + 1);
 					this.set(loc, 0);
 					merged = true;
 					diff++;
@@ -97,113 +98,224 @@ function ai_move(dir) {
 	return diff != 0;
 }
 
-function ai_cost() {
+ai_grid.prototype.score = function () {
 	/* How bad is this grid */
 	var cnt = 0;
 	for (var i = 0;i < 16;i++) {
 		if (this.get(i) > 0)
 			cnt++;
 	}
-	return cnt;
-}
 
-function ai_score() {
-	/* How bad is this grid */
-	var cnt = 0;
-	for (var i = 0;i < 16;i++) {
-		cnt += this.get(i);
+	var c = 0x1000000 - 0x1000 * cnt;
+
+	//var c = 0;
+
+	//var seen = [];
+
+	/*for (var i = 0;i < 4;i++) {
+		for (var j = 0;j < 4;j++) {
+			var g = this.get(4 * i + j);
+			if (seen[""+g])
+				continue;
+			c += g;
+			seen[""+g] = true;
+		}
+	}*/
+
+	/* TODO: Try to find chains and check that the smallest element in
+	 *       the chain is not surrounded by larger elements as this would
+	 *       make the element inaccessible. */
+
+	for (var i = 0;i < this.h;i++) {
+		for (var j = 0;j < this.w;j++) {
+			var border = 4;
+			var n = this.get(this.w * i + j);
+
+			if (i) {
+				var o = this.get(this.w * (i - 1) + j);
+				if (o <= n) border--;
+			}
+
+			if (j) {
+				var o = this.get(this.w * i + j - 1);
+				if (o <= n) border--;
+			}
+
+			if (i < 3) {
+				var o = this.get(this.w * (i + 1) + j);
+				if (o <= n) border--;
+			}
+
+			if (j < 3) {
+				var o = this.get(this.w * i + j + 1);
+				if (o <= n) border--;
+			}
+
+			/* An element that is inaccessible because it is
+			 * surrounded, severly compromises the grid */
+			if (border == 4) {
+				c -= 0x40000;
+			}
+		}
 	}
-	return cnt;
-}
 
-function ai_max() {
-	/* How bad is this grid */
-	var cnt = 0;
-	for (var i = 0;i < 16;i++) {
-		var val = this.get(i);
-		if (val > cnt)
-			cnt = val;
+	for (var i = 0;i < this.h;i++) {
+		for (var j = 0;j < this.w;j++) {
+			var yes = false;
+
+			var n = this.get(this.w * i + j);
+			// See if we can collapse this node later on
+			if (i) {
+				var o = this.get(this.w * (i - 1) + j);
+				if (n == o + 1) yes = true;
+			}
+			if (j) {
+				var o = this.get(this.w * i + j - 1);
+				if (n == o + 1) yes = true;
+			}
+			if (i < 3) {
+				var o = this.get(this.w * (i + 1) + j);
+				if (n == o + 1) yes = true;
+			}
+			if (j < 3) {
+				var o = this.get(this.w * i + j + 1);
+				if (n == o + 1) yes = true;
+			}
+			if (yes) {
+				c += Math.pow(2, n);
+			}
+		}
 	}
-	return cnt;
+
+		/*for (var i = 0;i < 4;i++) {
+			var prev = this.get(4 * i);
+			for (var j = 1;j < 4;j++) {
+				var next = this.get(4 * i + j);
+				if (next > prev) {
+					c -= Math.pow(2, next) - Math.pow(2, prev);
+				}
+				prev = next;
+			}
+		}
+		for (var i = 0;i < 4;i++) {
+			var prev = this.get(i);
+			for (var j = 1;j < 4;j++) {
+				var next = this.get(i + 4 * j);
+				if (next > prev) {
+					c -= Math.pow(2, next) - Math.pow(2, prev);
+				}
+				prev = next;
+			}
+		}*/
+
+	return c;
+
 }
 
-function ai_bruteforce(n) {
-	/* Search all possible choices within a reasonable limit */
-	/* The best choice does not lose and has the lowest number of pieces */
+ai_grid.prototype.bruteforce_recurse = function (n) {
+	if (n == 0) {
+		/* Let something else handle the intricate details */
+		return [this.score(), 0];
+	}
 
-	if (n == 0)
-		return [this.score(), -1];
-
+	/* Total # of places that element could fall */
+	var tot = 0;
+	/* Total # of safe places */
+	var safe = 0;
+	/* What is the probability of losing in this situation */
+	var prob_lose = 0;
+	/* What is the total score */
 	var score = 0;
+
+	var tmp = this.dup();
+
+	var prev_y = [null, null, null, null];
+	for (var y = 0;y < this.h;y++) {
+		var prev_x = null;
+		for (var x = 0;x < this.w;x++) {
+			if (this.get(y * this.w + x) != 0) {
+				prev_y[x] = prev_x = null;
+				continue;
+			}
+
+			tot++;
+
+			/* Easy access array */
+			var prev = [prev_y[x], prev_x, prev_y[x], prev_x];
+
+			var prob_lose_2 = 1, prob_lose_4 = 1;
+			var score_2 = 0, score_4 = 0;
+
+			for (var dir = 0;dir < 4;dir++) {
+				if (prev[dir]) {
+					var c = prev[dir];
+					if (c[0] < prob_lose_2 && c[2] > score_2) {
+						prob_lose_2 = c[0];
+						score_2 = c[2];
+					}
+					if (c[1] < prob_lose_4 && c[3] > score_4) {
+						prob_lose_4 = c[1];
+						score_4 = c[3];
+					}
+					continue;
+				}
+
+				tmp.set(y * this.w + x, 1);
+				if (tmp.move(dir)) {
+					var c = tmp.bruteforce_recurse(n - 1);
+					if (c[1] < prob_lose_2 && c[0] > score_2) {
+						prob_lose_2 = c[1];
+						score_2 = c[0];
+					}
+
+					tmp.reset(this);
+				} else {
+					/* No moves done, so grid unchanged */
+				}
+
+				tmp.set(y * this.w + x, 2);
+				if (tmp.move(dir)) {
+					var c = tmp.bruteforce_recurse(n - 1);
+					if (c[1] < prob_lose_4 && c[0] > score_4) {
+						prob_lose_4 = c[1];
+						score_4 = c[0];
+					}
+
+					tmp.reset(this);
+				} else {
+					/* No moves done, so grid unchanged */
+				}
+			}
+
+			/* Reset the index in tmp */
+			tmp.set(y * this.w + x, 0);
+
+			score += 0.9 * score_2 + 0.1 * score_4;
+			prob_lose += 0.9 * prob_lose_2 + 0.1 * prob_lose_4
+
+			prev_y[x] = prev_x = [prob_lose_2, prob_lose_4, score_2, score_4];
+		}
+	}
+
+	return [score / tot, prob_lose / tot];
+}
+
+ai_grid.prototype.bruteforce = function(n) {
+	var best = 0;
 	var dir = -1;
-	var bad = 1;
 
 	for (var i = 0;i < 4;i++) {
 		var tmp = this.dup();
 		if (!tmp.move(i))
 			continue;
 
-		var dat = tmp.badloc();
-		tmp.set(dat[0], dat[1]);
-		var res = tmp.bruteforce(n - 1);
-		if (res[0] > score) {
-			score = res[0];
+		var v = tmp.bruteforce_recurse(n - 1);
+		console.log(i, v);
+		if (v[0] > best) {
+			best = v[0];
 			dir = i;
 		}
 	}
-
-	if (dir == -1)
-		return [this.score(), -1];
-
-	return [score, dir];
-}
-
-function ai_badloc() {
-	var cost = 0;
-	var loc = -1;
-	var type = -1;
-
-	for (j = 0;j < 16;j++) {
-		if (this.get(j) != 0)
-			continue;
-
-		this.set(j, 2);
-		var local_cost1 = 0xffffffff;
-		for (var i = 0;i < 4;i++) {
-			var tmp = this.dup();
-			if (!tmp.move(i))
-				continue;
-
-			var t1 = tmp.cost();
-			if (t1 < local_cost1)
-				local_cost1 = t1;
-		}
-
-		this.set(j, 4);
-		var local_cost2 = 0xffffffff;
-		for (var i = 0;i < 4;i++) {
-			var tmp = this.dup();
-			if (!tmp.move(i))
-				continue;
-
-			var t2 = tmp.cost();
-			if (t2 < local_cost2)
-				local_cost2 = t2;
-		}
-
-		this.set(j, 0);
-
-		if (local_cost1 > cost) {
-			loc = j;
-			type = 2;
-			cost = local_cost1;
-		}
-		if (local_cost2 > cost) {
-			loc = j;
-			type = 4;
-			cost = local_cost2;
-		}
-	}
-
-	return [loc, type];
+	console.log("done", dir);
+	return dir;
 }
