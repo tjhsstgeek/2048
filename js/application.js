@@ -14,12 +14,14 @@ window.requestAnimationFrame(function () {
       }
     });
     var r = 4;
-    if (amt >= 12 || (amt >= 10 && gm.keepPlaying))
-      r = 4;
-    if ((cnt >= 1024 && !gm.keepPlaying) || cnt >= 2048)
-      r = 5;
-    if ((cnt++ >= 1048 && !gm.keepPlaying) || cnt >= 2072)
-      r = 6;
+    //if (amt >= 13)
+    //  r = 5;
+    //if (amt >= 12 || (amt >= 10 && gm.keepPlaying))
+    //  r = 4;
+    //if ((cnt >= 1024 && !gm.keepPlaying) || cnt >= 2048)
+    //  r = 5;
+    //if ((cnt++ >= 1048 && !gm.keepPlaying) || cnt >= 2072)
+    //  r = 6;
     var grid = new ai_grid(4, 4, arr);
     var dir = grid.bruteforce(r);
 
@@ -35,7 +37,7 @@ window.requestAnimationFrame(function () {
       gm.inputManager.emit("keepPlaying");
   }, 10);
 
-  //var a = [3, 2, 0, 1, 2, 5, 4, 2, 1, 4, 7, 5, 2, 6, 8, 2];
-  //var ai = new ai_grid(a);
-  //ai.bruteforce(3);
+  //var a = [1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0];//[3, 2, 0, 1, 2, 5, 4, 2, 1, 4, 7, 5, 2, 6, 8, 2];
+  //var ai = new ai_grid(4, 4, a);
+  //console.log(ai.bruteforce(4));
 });
