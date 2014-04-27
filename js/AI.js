@@ -26,6 +26,16 @@ ai_grid.prototype.reset = function (other) {
 	}
 }
 
+ai_grid.prototype.avail = function () {
+	var cnt = 0;
+	for (var i = 0;i < 16;i++) {
+		if (this.get(i) == 0)
+			cnt++;
+	}
+
+	return cnt;
+}
+
 ai_grid.prototype.move = function (dir) {
 	// 0: up, 1: right, 2:down, 3: left
 	/* step1 is for combining elements in a row/column
@@ -154,7 +164,7 @@ ai_grid.prototype.score = function () {
 			/* An element that is inaccessible because it is
 			 * surrounded, severly compromises the grid */
 			if (border == 4) {
-				c -= 0x40000;
+				c -= 0x10000;
 			}
 		}
 	}
@@ -218,82 +228,101 @@ ai_grid.prototype.bruteforce_recurse = function (n) {
 		return [this.score(), 0];
 	}
 
-	/* Total # of places that element could fall */
-	var tot = 0;
-	/* Total # of safe places */
-	var safe = 0;
-	/* What is the probability of losing in this situation */
-	var prob_lose = 0;
-	/* What is the total score */
-	var score = 0;
+	var tot = this.avail();
+
+	var data_arr = new Array(this.w * this.h * 4 * 2);
 
 	var tmp = this.dup();
 
-	var prev_y = [null, null, null, null];
-	for (var y = 0;y < this.h;y++) {
-		var prev_x = null;
-		for (var x = 0;x < this.w;x++) {
-			if (this.get(y * this.w + x) != 0) {
-				prev_y[x] = prev_x = null;
-				continue;
+	for (var dir = 0; dir < 4; dir++) {
+		var step1, step2, start;
+		switch (dir) {
+		case 0: //Down
+			step1 = this.w;
+			step2 = 1;
+			start = 0;
+			break;
+		case 3: //Left
+			step1 = 1;
+			step2 = this.w;
+			start = 0;
+			break;
+		case 1: // Right
+			step1 = -1;
+			step2 = -this.w;
+			start = this.arr.length - 1;
+			break;
+		case 2: //Up
+			step1 = -this.w;
+			step2 = -1;
+			start = this.arr.length - 1;
+			break;
+		}
+
+		for (var j = 0;j < 4;j++) {
+			var merged = false;
+			var slot = 0;
+
+			for (var k = 0;k < 4;k++) {
+				var prev = start + step2 * j + step1 * (k - 1);
+
+				var loc = start + step2 * j + step1 * k;
+				var val = this.get(loc);
+
+				if (val)
+					continue;
+
+				if (k && data_arr[prev * 8 + dir * 2 + 0]) {
+					data_arr[loc * 8 + dir * 2 + 0] = data_arr[prev * 8 + dir * 2 + 0];
+				} else {
+					tmp.set(loc, 1);
+					if (tmp.move(dir)) {
+						data_arr[loc * 8 + dir * 2 + 0] = tmp.bruteforce_recurse(n - 1);
+						tmp.reset(this);
+					}
+				}
+
+				if (k && data_arr[prev * 8 + dir * 2 + 1]) {
+					data_arr[loc * 8 + dir * 2 + 1] = data_arr[prev * 8 + dir * 2 + 1];
+				} else {
+					tmp.set(loc, 2);
+					if (tmp.move(dir)) {
+						data_arr[loc * 8 + dir * 2 + 1] = tmp.bruteforce_recurse(n - 1);
+						tmp.reset(this);
+					}
+				}
+
+				tmp.set(loc, 0);
 			}
+		}
+	}
 
-			tot++;
+	var score = 0;
+	var prob_lose = 0;
 
-			/* Easy access array */
-			var prev = [prev_y[x], prev_x, prev_y[x], prev_x];
+	for (var y = 0;y < this.h;y++) {
+		for (var x = 0;x < this.w;x++) {
+			var prob_lose_2 = prob_lose_4 = 1;
+			var score_2 = score_4 = 0;
 
-			var prob_lose_2 = 1, prob_lose_4 = 1;
-			var score_2 = 0, score_4 = 0;
+			if (this.get(y * this.w + x) != 0)
+				continue;
 
 			for (var dir = 0;dir < 4;dir++) {
-				if (prev[dir]) {
-					var c = prev[dir];
-					if (c[0] < prob_lose_2 && c[2] > score_2) {
-						prob_lose_2 = c[0];
-						score_2 = c[2];
-					}
-					if (c[1] < prob_lose_4 && c[3] > score_4) {
-						prob_lose_4 = c[1];
-						score_4 = c[3];
-					}
-					continue;
+				var loc = y * this.w * 8 + x * 8 + dir * 2;
+				/* TODO: is this really the best choice */
+				if (data_arr[loc] && data_arr[loc][1] < prob_lose_2 && data_arr[loc][0] > score_2) {
+					prob_lose_2 = data_arr[loc][1];
+					score_2 = data_arr[loc][0];
 				}
-
-				tmp.set(y * this.w + x, 1);
-				if (tmp.move(dir)) {
-					var c = tmp.bruteforce_recurse(n - 1);
-					if (c[1] < prob_lose_2 && c[0] > score_2) {
-						prob_lose_2 = c[1];
-						score_2 = c[0];
-					}
-
-					tmp.reset(this);
-				} else {
-					/* No moves done, so grid unchanged */
-				}
-
-				tmp.set(y * this.w + x, 2);
-				if (tmp.move(dir)) {
-					var c = tmp.bruteforce_recurse(n - 1);
-					if (c[1] < prob_lose_4 && c[0] > score_4) {
-						prob_lose_4 = c[1];
-						score_4 = c[0];
-					}
-
-					tmp.reset(this);
-				} else {
-					/* No moves done, so grid unchanged */
+				/* TODO: is this really the best choice */
+				if (data_arr[loc + 1] && data_arr[loc + 1][1] < prob_lose_4 && data_arr[loc + 1][0] > score_4) {
+					prob_lose_4 = data_arr[loc + 1][1];
+					score_4 = data_arr[loc + 1][0];
 				}
 			}
-
-			/* Reset the index in tmp */
-			tmp.set(y * this.w + x, 0);
-
 			score += 0.9 * score_2 + 0.1 * score_4;
 			prob_lose += 0.9 * prob_lose_2 + 0.1 * prob_lose_4
-
-			prev_y[x] = prev_x = [prob_lose_2, prob_lose_4, score_2, score_4];
 		}
 	}
 
