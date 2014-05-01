@@ -1,5 +1,6 @@
-function Grid(size) {
-  this.size = size;
+function Grid(width, height) {
+  this.width  = width;
+  this.height = height;
 
   this.cells = [];
 
@@ -8,10 +9,10 @@ function Grid(size) {
 
 // Build a grid of the specified size
 Grid.prototype.build = function () {
-  for (var x = 0; x < this.size; x++) {
+  for (var x = 0; x < this.width; x++) {
     var row = this.cells[x] = [];
 
-    for (var y = 0; y < this.size; y++) {
+    for (var y = 0; y < this.height; y++) {
       row.push(null);
     }
   }
@@ -40,8 +41,8 @@ Grid.prototype.availableCells = function () {
 
 // Call callback for every cell
 Grid.prototype.eachCell = function (callback) {
-  for (var x = 0; x < this.size; x++) {
-    for (var y = 0; y < this.size; y++) {
+  for (var x = 0; x < this.width; x++) {
+    for (var y = 0; y < this.height; y++) {
       callback(x, y, this.cells[x][y]);
     }
   }
@@ -79,6 +80,6 @@ Grid.prototype.removeTile = function (tile) {
 };
 
 Grid.prototype.withinBounds = function (position) {
-  return position.x >= 0 && position.x < this.size &&
-         position.y >= 0 && position.y < this.size;
+  return position.x >= 0 && position.x < this.width &&
+         position.y >= 0 && position.y < this.height;
 };

@@ -24,6 +24,25 @@
     </div>
     <p class="game-intro">Join the numbers and get to the <strong>2048 tile!</strong></p>
 
+    <div class="game-controller">
+        <input id='ai_start' type='button' value='Start' onclick='ai_start()' />
+        <input id='ai_cont' type='button' value='Continue' onclick='ai_continue()' disabled />
+        <input id='ai_pause' type='button' value='Pause' onclick='ai_pause()' disabled />
+        <input id='ai_stop' type='button' value='Stop' onclick='ai_stop()' disabled />
+        <select onchange='select_option(this.options[this.selectedIndex].value)'>
+          <option value='2x2'>2x2</option>
+          <option value='2x3'>2x3</option>
+          <option value='3x2'>3x2</option>
+          <option value='3x3'>3x3</option>
+          <option value='3x4'>3x4</option>
+          <option value='4x3'>4x3</option>
+          <option value='4x4' selected>4x4</option>
+          <option value='4x5'>4x5</option>
+          <option value='5x4'>5x4</option>
+          <option value='5x5'>5x5</option>
+        </select>
+    </div>
+
     <div class="game-container">
       <div class="game-message">
         <p></p>
@@ -85,7 +104,8 @@
   <script src="js/tile.js"></script>
   <script src="js/local_score_manager.js"></script>
   <script src="js/game_manager.js"></script>
-  <script src="js/application.js"></script>
   <script src="js/AI.js"></script>
+  <script src="js/ga.js"></script>
+  <script src="js/application.js"></script>
 </body>
 </html>
