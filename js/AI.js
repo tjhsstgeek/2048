@@ -1,22 +1,34 @@
-function ai_grid(w, h, arr) {
-	this.arr = new Array();
-	for (var a = 0;a < 16;a++) {
-		this.arr[a] = arr[a];
-	}
+function ai_grid(w, h, depth, features) {
+	this.arr = new Array(w * h);
+	for (var a = 0;a < w * h;a++)
+		this.arr[a] = 0;
 
 	this.w = w;
 	this.h = h;
+
+	this.features = features;
+
+	this.data_arr = new Array(this.w * this.h * 4 * 2);
+
+	if (depth)
+		this.child = new ai_grid(w, h, depth - 1, features);
 }
 
 ai_grid.prototype.dup = function () {
-	return new ai_grid(this.w, this.h, this.arr);
+	this.child.reset(this);
+	return this.child;
+	//return new ai_grid(this.w, this.h, this.arr, this.features);
 }
 
 ai_grid.prototype.get = function (loc) {
 	return this.arr[loc];
 }
 
-ai_grid.prototype.set = function (loc, val) {
+ai_grid.prototype.set = function (x, y, val) {
+	this.arr[y * this.w + x] = val;
+}
+
+ai_grid.prototype.set_loc = function (loc, val) {
 	this.arr[loc] = val;
 }
 
@@ -36,39 +48,86 @@ ai_grid.prototype.avail = function () {
 	return cnt;
 }
 
+ai_grid.prototype.normal_grid = function() {
+	/* Return a normalized grid where the largest element is in the bottom left hand corner */
+	/* Theoretically, most large elements would be clumped around the largest element
+	 * and the small elements would be clumped on the other side (top right corner) */
+
+	var largest = 0;
+	for (var a = 1;a < this.w * this.h;a++)
+		if (this.get(a) > this.get(largest))
+			largest = a;
+
+	var x = largest % this.w;
+	var y = (largest - x) / this.w;
+
+	var mult_x = 2 * x + 1;
+	var left = mult_x < this.w;
+	var right = mult_x > this.w;
+	var mult_y = 2 * x + 1;
+	var bottom = mult_y < this.h;
+	var top = mult_y > this.h;
+
+	if (left) {
+		if (top) {
+
+		} else {
+
+		}
+	} else if (right) {
+		if (top) {
+
+		} else {
+			
+		}
+	} else {
+		if (top) {
+
+		}
+	}
+}
+
 ai_grid.prototype.move = function (dir) {
 	// 0: up, 1: right, 2:down, 3: left
 	/* step1 is for combining elements in a row/column
 	 * step2 is for iterating through the rows/columns
 	 * start is the first node to visit */
-	var step1, step2, start;
+	var comb_step, iter_step, start, comb_max, iter_max;
 	if (dir == 0) {
-		step1 = this.w;
-		step2 = 1;
+		comb_step = this.w;
+		iter_step = 1;
 		start = 0;
+		comb_max = this.h;
+		iter_max = this.w;
 	} else if (dir == 2) {
-		step1 = -this.w;
-		step2 = -1;
+		comb_step = -this.w;
+		iter_step = -1;
 		start = this.arr.length - 1;
+		comb_max = this.h;
+		iter_max = this.w;
 	} else if (dir == 1) {
-		step1 = -1;
-		step2 = -this.w;
+		comb_step = -1;
+		iter_step = -this.w;
 		start = this.arr.length - 1;
+		comb_max = this.w;
+		iter_max = this.h;
 	} else if (dir == 3) {
-		step1 = 1;
-		step2 = this.w;
+		comb_step = 1;
+		iter_step = this.w;
 		start = 0;
+		comb_max = this.w;
+		iter_max = this.h;
 	} else
 		return false;
 
 	var diff = 0;
 
-	for (var j = 0;j < 4;j++) {
+	for (var j = 0;j < iter_max;j++) {
 		var merged = false;
 		var slot = 0;
 
-		for (var k = 0;k < 4;k++) {
-			var loc = start + step2 * j + step1 * k;
+		for (var k = 0;k < comb_max;k++) {
+			var loc = start + iter_step * j + comb_step * k;
 			var val = this.get(loc);
 
 			/* Skip empty cells */
@@ -77,12 +136,12 @@ ai_grid.prototype.move = function (dir) {
 
 			if (!merged && slot) {
 				/* We only look at shifted values */
-				var loc_merge = start + step2 * j + step1 * (slot - 1);
+				var loc_merge = start + iter_step * j + comb_step * (slot - 1);
 				var val_merge = this.get(loc_merge);
 
 				if (val == val_merge) {
-					this.set(loc_merge, val + 1);
-					this.set(loc, 0);
+					this.set_loc(loc_merge, val + 1);
+					this.set_loc(loc, 0);
 					merged = true;
 					diff++;
 					/* This node is gone, so skip shifting it */
@@ -97,9 +156,9 @@ ai_grid.prototype.move = function (dir) {
 				continue;
 			}
 
-			var loc_to = start + step2 * j + step1 * slot;
-			this.set(loc, 0);
-			this.set(loc_to, val);
+			var loc_to = start + iter_step * j + comb_step * slot;
+			this.set_loc(loc, 0);
+			this.set_loc(loc_to, val);
 			slot++;
 			diff++;
 		}
@@ -109,35 +168,20 @@ ai_grid.prototype.move = function (dir) {
 }
 
 ai_grid.prototype.score = function () {
-	/* How bad is this grid */
-	var cnt = 0;
-	for (var i = 0;i < 16;i++) {
-		if (this.get(i) > 0)
-			cnt++;
-	}
-
-	var c = 0x1000000 - 0x1000 * cnt;
-
-	//var c = 0;
-
-	//var seen = [];
-
-	/*for (var i = 0;i < 4;i++) {
-		for (var j = 0;j < 4;j++) {
-			var g = this.get(4 * i + j);
-			if (seen[""+g])
-				continue;
-			c += g;
-			seen[""+g] = true;
-		}
-	}*/
+	var loc = 0;
+	var amt = this.avail();
+	var c = 0x10000 + 0x400 * amt * this.features[0];
+	loc++;
 
 	/* TODO: Try to find chains and check that the smallest element in
 	 *       the chain is not surrounded by larger elements as this would
 	 *       make the element inaccessible. */
 
 	for (var i = 0;i < this.h;i++) {
+		var edge_y = (i == 0) || (i + 1 == this.h);
 		for (var j = 0;j < this.w;j++) {
+			var edge_x = (j == 0) || (j + 1 == this.w);
+
 			var border = 4;
 			var n = this.get(this.w * i + j);
 
@@ -164,10 +208,16 @@ ai_grid.prototype.score = function () {
 			/* An element that is inaccessible because it is
 			 * surrounded, severly compromises the grid */
 			if (border == 4) {
-				c -= 0x10000;
+				if (edge_x && edge_y)
+					c -= 0x400 * this.features[32 + n + loc];
+				else if (edge_x || edge_y)
+					c -= 0x400 * this.features[16 + n + loc];
+				else
+					c -= 0x400 * this.features[n + loc];
 			}
 		}
 	}
+	loc += 3 * 16;
 
 	for (var i = 0;i < this.h;i++) {
 		for (var j = 0;j < this.w;j++) {
@@ -192,31 +242,44 @@ ai_grid.prototype.score = function () {
 				if (n == o + 1) yes = true;
 			}
 			if (yes) {
-				c += Math.pow(2, n);
+				c += 0x400 * this.features[n + loc];
 			}
 		}
 	}
+	loc += 16;
 
-		/*for (var i = 0;i < 4;i++) {
-			var prev = this.get(4 * i);
-			for (var j = 1;j < 4;j++) {
-				var next = this.get(4 * i + j);
-				if (next > prev) {
-					c -= Math.pow(2, next) - Math.pow(2, prev);
-				}
-				prev = next;
+	/* TODO: No more than three copies of a tile */
+
+	/*for (var i = 0;i < this.w * this.h;i++) {
+		if (this.get(i))
+			c += Math.pow(2, this.get(i)) * this.features[4 + i];
+	}*/
+
+	/*for (var i = 0;i < 4;i++) {
+		var prev = this.get(4 * i);
+		for (var j = 1;j < 4;j++) {
+			var next = this.get(4 * i + j);
+			if (next > prev) {
+				c -= 0x400 * this.features[prev * 16 + next + loc];
+				//c -= (Math.pow(2, next) - Math.pow(2, prev)) * this.features[4 * i + j + loc];
+				//c -= (next - prev) * this.features[4 * i + j + loc];
 			}
+			prev = next;
 		}
-		for (var i = 0;i < 4;i++) {
-			var prev = this.get(i);
-			for (var j = 1;j < 4;j++) {
-				var next = this.get(i + 4 * j);
-				if (next > prev) {
-					c -= Math.pow(2, next) - Math.pow(2, prev);
-				}
-				prev = next;
+	}
+	loc += 256;
+	for (var i = 0;i < 4;i++) {
+		var prev = this.get(i);
+		for (var j = 1;j < 4;j++) {
+			var next = this.get(i + 4 * j);
+			if (next > prev) {
+				c -= 0x400 * this.features[prev * 16 + next + loc];
+				//c -= (Math.pow(2, next) - Math.pow(2, prev)) * this.features[4 * i + j + loc];
 			}
-		}*/
+			prev = next;
+		}
+	}
+	loc += 256;*/
 
 	return c;
 
@@ -230,7 +293,7 @@ ai_grid.prototype.bruteforce_recurse = function (n) {
 
 	var tot = this.avail();
 
-	var data_arr = new Array(this.w * this.h * 4 * 2);
+	var data_arr = this.data_arr;
 
 	var tmp = this.dup();
 
@@ -269,13 +332,15 @@ ai_grid.prototype.bruteforce_recurse = function (n) {
 				var loc = start + step2 * j + step1 * k;
 				var val = this.get(loc);
 
+				data_arr[loc * 8 + dir * 2 + 0] = data_arr[loc * 8 + dir * 2 + 1] = null;
+
 				if (val)
 					continue;
 
 				if (k && data_arr[prev * 8 + dir * 2 + 0]) {
 					data_arr[loc * 8 + dir * 2 + 0] = data_arr[prev * 8 + dir * 2 + 0];
 				} else {
-					tmp.set(loc, 1);
+					tmp.set_loc(loc, 1);
 					if (tmp.move(dir)) {
 						data_arr[loc * 8 + dir * 2 + 0] = tmp.bruteforce_recurse(n - 1);
 						tmp.reset(this);
@@ -285,14 +350,14 @@ ai_grid.prototype.bruteforce_recurse = function (n) {
 				if (k && data_arr[prev * 8 + dir * 2 + 1]) {
 					data_arr[loc * 8 + dir * 2 + 1] = data_arr[prev * 8 + dir * 2 + 1];
 				} else {
-					tmp.set(loc, 2);
+					tmp.set_loc(loc, 2);
 					if (tmp.move(dir)) {
 						data_arr[loc * 8 + dir * 2 + 1] = tmp.bruteforce_recurse(n - 1);
 						tmp.reset(this);
 					}
 				}
 
-				tmp.set(loc, 0);
+				tmp.set_loc(loc, 0);
 			}
 		}
 	}
@@ -311,12 +376,16 @@ ai_grid.prototype.bruteforce_recurse = function (n) {
 			for (var dir = 0;dir < 4;dir++) {
 				var loc = y * this.w * 8 + x * 8 + dir * 2;
 				/* TODO: is this really the best choice */
-				if (data_arr[loc] && data_arr[loc][1] < prob_lose_2 && data_arr[loc][0] > score_2) {
+				//if (data_arr[loc] && data_arr[loc][1] < prob_lose_2 && data_arr[loc][0] > score_2) {
+				//if (data_arr[loc] && (data_arr[loc][1] < prob_lose_2 || (data_arr[loc][1] == prob_lose_2 && data_arr[loc][0] > score_2))) {
+				if (data_arr[loc] && (data_arr[loc][0] > score_2 || (data_arr[loc][0] == score_2 && data_arr[loc][1] < prob_lose_2))) {
 					prob_lose_2 = data_arr[loc][1];
 					score_2 = data_arr[loc][0];
 				}
 				/* TODO: is this really the best choice */
-				if (data_arr[loc + 1] && data_arr[loc + 1][1] < prob_lose_4 && data_arr[loc + 1][0] > score_4) {
+				//if (data_arr[loc + 1] && data_arr[loc + 1][1] < prob_lose_4 && data_arr[loc + 1][0] > score_4) {
+				//if (data_arr[loc + 1] && (data_arr[loc + 1][1] < prob_lose_4 || (data_arr[loc + 1][1] == prob_lose_4 && data_arr[loc + 1][0] > score_4))) {
+				if (data_arr[loc + 1] && (data_arr[loc + 1][1] > score_4 || (data_arr[loc + 1][0] == score_4 && data_arr[loc + 1][1] < prob_lose_4))) {
 					prob_lose_4 = data_arr[loc + 1][1];
 					score_4 = data_arr[loc + 1][0];
 				}
@@ -339,12 +408,14 @@ ai_grid.prototype.bruteforce = function(n) {
 			continue;
 
 		var v = tmp.bruteforce_recurse(n - 1);
-		console.log(i, v);
+		//console.log(i, v);
 		if (v[0] > best) {
 			best = v[0];
 			dir = i;
 		}
+
+		tmp.reset(this);
 	}
-	console.log("done", dir);
+	//console.log("done", dir);
 	return dir;
 }
