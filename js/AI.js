@@ -89,8 +89,8 @@ ai_grid.prototype.normal_grid = function() {
 
 ai_grid.prototype.move = function (dir) {
 	// 0: up, 1: right, 2:down, 3: left
-	/* step1 is for combining elements in a row/column
-	 * step2 is for iterating through the rows/columns
+	/* comb_step is for combining elements in a row/column
+	 * iter_step is for iterating through the rows/columns
 	 * start is the first node to visit */
 	var comb_step, iter_step, start, comb_max, iter_max;
 	if (dir == 0) {
@@ -298,38 +298,41 @@ ai_grid.prototype.bruteforce_recurse = function (n) {
 	var tmp = this.dup();
 
 	for (var dir = 0; dir < 4; dir++) {
-		var step1, step2, start;
-		switch (dir) {
-		case 0: //Down
-			step1 = this.w;
-			step2 = 1;
+		var comb_step, iter_step, start, comb_max, iter_max;
+		if (dir == 0) {
+			comb_step = this.w;
+			iter_step = 1;
 			start = 0;
-			break;
-		case 3: //Left
-			step1 = 1;
-			step2 = this.w;
+			comb_max = this.h;
+			iter_max = this.w;
+		} else if (dir == 2) {
+			comb_step = -this.w;
+			iter_step = -1;
+			start = this.arr.length - 1;
+			comb_max = this.h;
+			iter_max = this.w;
+		} else if (dir == 1) {
+			comb_step = -1;
+			iter_step = -this.w;
+			start = this.arr.length - 1;
+			comb_max = this.w;
+			iter_max = this.h;
+		} else if (dir == 3) {
+			comb_step = 1;
+			iter_step = this.w;
 			start = 0;
-			break;
-		case 1: // Right
-			step1 = -1;
-			step2 = -this.w;
-			start = this.arr.length - 1;
-			break;
-		case 2: //Up
-			step1 = -this.w;
-			step2 = -1;
-			start = this.arr.length - 1;
-			break;
+			comb_max = this.w;
+			iter_max = this.h;
 		}
 
-		for (var j = 0;j < 4;j++) {
+		for (var j = 0;j < iter_max;j++) {
 			var merged = false;
 			var slot = 0;
 
-			for (var k = 0;k < 4;k++) {
-				var prev = start + step2 * j + step1 * (k - 1);
+			for (var k = 0;k < comb_max;k++) {
+				var prev = start + iter_step * j + comb_step * (k - 1);
 
-				var loc = start + step2 * j + step1 * k;
+				var loc = start + iter_step * j + comb_step * k;
 				var val = this.get(loc);
 
 				data_arr[loc * 8 + dir * 2 + 0] = data_arr[loc * 8 + dir * 2 + 1] = null;

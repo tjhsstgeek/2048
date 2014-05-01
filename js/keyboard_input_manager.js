@@ -22,6 +22,14 @@ KeyboardInputManager.prototype.on = function (event, callback) {
   this.events[event].push(callback);
 };
 
+KeyboardInputManager.prototype.off = function (event, callback) {
+  if (!this.events[event]) {
+    return;
+  }
+  var idx = this.events[event].indexOf(callback);
+  this.events[event].splice(idx, 1);
+};
+
 KeyboardInputManager.prototype.emit = function (event, data) {
   var callbacks = this.events[event];
   if (callbacks) {

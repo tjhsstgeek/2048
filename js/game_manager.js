@@ -7,9 +7,12 @@ function GameManager(width, height, InputManager, Actuator, ScoreManager) {
 
   this.startTiles   = 2;
 
-  this.inputManager.on("move", this.move.bind(this));
-  this.inputManager.on("restart", this.restart.bind(this));
-  this.inputManager.on("keepPlaying", this.keepPlaying.bind(this));
+  this.do_move = this.move.bind(this);
+  this.do_restart = this.restart.bind(this);
+  this.do_keepPlaying = this.keepPlaying.bind(this);
+  this.inputManager.on("move", this.do_move);
+  this.inputManager.on("restart", this.do_restart);
+  this.inputManager.on("keepPlaying", this.do_keepPlaying);
 
   this.setup();
 }
@@ -19,6 +22,13 @@ GameManager.prototype.restart = function () {
   this.actuator.continue();
   this.setup();
 };
+
+// Stops the game
+GameManager.prototype.stop = function () {
+  this.inputManager.off("move", this.do_move);
+  this.inputManager.off("restart", this.do_restart);
+  this.inputManager.off("keepPlaying", this.do_keepPlaying);
+}
 
 // Keep playing after winning
 GameManager.prototype.keepPlaying = function () {
