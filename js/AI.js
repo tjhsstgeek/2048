@@ -170,7 +170,7 @@ ai_grid.prototype.move = function (dir) {
 ai_grid.prototype.score = function () {
 	var loc = 0;
 	var amt = this.avail();
-	var c = 0x10000 + 0x400 * amt * this.features[0];
+	var c = 0x100000 + 0x400 * amt * this.features[0];
 	loc++;
 
 	/* TODO: Try to find chains and check that the smallest element in
@@ -195,12 +195,12 @@ ai_grid.prototype.score = function () {
 				if (o <= n) border--;
 			}
 
-			if (i < 3) {
+			if (i + 1 < this.h) {
 				var o = this.get(this.w * (i + 1) + j);
 				if (o <= n) border--;
 			}
 
-			if (j < 3) {
+			if (j + 1 < this.w) {
 				var o = this.get(this.w * i + j + 1);
 				if (o <= n) border--;
 			}
@@ -233,11 +233,11 @@ ai_grid.prototype.score = function () {
 				var o = this.get(this.w * i + j - 1);
 				if (n == o + 1) yes = true;
 			}
-			if (i < 3) {
+			if (i + 1 < this.h) {
 				var o = this.get(this.w * (i + 1) + j);
 				if (n == o + 1) yes = true;
 			}
-			if (j < 3) {
+			if (j + 1 < this.w) {
 				var o = this.get(this.w * i + j + 1);
 				if (n == o + 1) yes = true;
 			}
@@ -382,15 +382,19 @@ ai_grid.prototype.bruteforce_recurse = function (n) {
 				//if (data_arr[loc] && data_arr[loc][1] < prob_lose_2 && data_arr[loc][0] > score_2) {
 				//if (data_arr[loc] && (data_arr[loc][1] < prob_lose_2 || (data_arr[loc][1] == prob_lose_2 && data_arr[loc][0] > score_2))) {
 				if (data_arr[loc] && (data_arr[loc][0] > score_2 || (data_arr[loc][0] == score_2 && data_arr[loc][1] < prob_lose_2))) {
-					prob_lose_2 = data_arr[loc][1];
-					score_2 = data_arr[loc][0];
+					if (data_arr[loc][1] < 1) {
+						prob_lose_2 = data_arr[loc][1];
+						score_2 = data_arr[loc][0];
+					}
 				}
 				/* TODO: is this really the best choice */
 				//if (data_arr[loc + 1] && data_arr[loc + 1][1] < prob_lose_4 && data_arr[loc + 1][0] > score_4) {
 				//if (data_arr[loc + 1] && (data_arr[loc + 1][1] < prob_lose_4 || (data_arr[loc + 1][1] == prob_lose_4 && data_arr[loc + 1][0] > score_4))) {
 				if (data_arr[loc + 1] && (data_arr[loc + 1][1] > score_4 || (data_arr[loc + 1][0] == score_4 && data_arr[loc + 1][1] < prob_lose_4))) {
-					prob_lose_4 = data_arr[loc + 1][1];
-					score_4 = data_arr[loc + 1][0];
+					if (data_arr[loc + 1][1] < 1) {
+						prob_lose_4 = data_arr[loc + 1][1];
+						score_4 = data_arr[loc + 1][0];
+					}
 				}
 			}
 			score += 0.9 * score_2 + 0.1 * score_4;
