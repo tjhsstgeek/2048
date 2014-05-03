@@ -390,7 +390,7 @@ ai_grid.prototype.bruteforce_recurse = function (n) {
 				/* TODO: is this really the best choice */
 				//if (data_arr[loc + 1] && data_arr[loc + 1][1] < prob_lose_4 && data_arr[loc + 1][0] > score_4) {
 				//if (data_arr[loc + 1] && (data_arr[loc + 1][1] < prob_lose_4 || (data_arr[loc + 1][1] == prob_lose_4 && data_arr[loc + 1][0] > score_4))) {
-				if (data_arr[loc + 1] && (data_arr[loc + 1][1] > score_4 || (data_arr[loc + 1][0] == score_4 && data_arr[loc + 1][1] < prob_lose_4))) {
+				if (data_arr[loc + 1] && (data_arr[loc + 1][0] > score_4 || (data_arr[loc + 1][0] == score_4 && data_arr[loc + 1][1] < prob_lose_4))) {
 					if (data_arr[loc + 1][1] < 1) {
 						prob_lose_4 = data_arr[loc + 1][1];
 						score_4 = data_arr[loc + 1][0];
